@@ -1,11 +1,9 @@
 
 
-add_library(cusHttpParser cusHttpParser.c)
+add_library(cusHttpParser cusHttpRequestParser.c cusHttpResponseParser.c)
 
 add_dependencies(cusHttpParser 
-                    trace 
-                    cusHttpUrlRouter)
+                    trace)
 
 target_include_directories(cusHttpParser PUBLIC 
-                            ../trace 
-                            ../cusHttpUrlRouter)
+                            ../trace)

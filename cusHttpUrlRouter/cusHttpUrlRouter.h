@@ -3,13 +3,7 @@
 #ifndef __CUS_HTTP_URL_ROUTER_H__
 #define __CUS_HTTP_URL_ROUTER_H__
 
-
-typedef enum e_http_method
-{
-    HTTP_METHOD_GET = 0,
-    HTTP_METHOD_POST,
-    HTTP_METHOD_MAX,
-} e_http_method_t;
+#include "cusHttpRequestParser.h"
 
 typedef void (*http_callback)(e_http_method_t method, void *user_args);
 
