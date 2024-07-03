@@ -141,6 +141,29 @@ static void cus_http_print_response(s_http_response_t *response)
     }
 }
 
+static char *cus_http_get_http_code_str(e_http_response_status_code_t status_code)
+{
+    char *ret = NULL;
+    switch (status_code)
+    {
+    case HTTP_RESPONSE_STATUS_200:
+    {
+        ret = "OK";
+        break;
+    }
+    case HTTP_RESPONSE_STATUS_404:
+    {
+        ret = "Not Found";
+        break;
+    }
+    default:
+    {
+        break;
+    }
+    }
+    return ret;
+}
+
 s_http_response_t *csu_http_response_prepare(s_http_request_t *request, e_http_response_status_code_t status_code)
 {
 
@@ -184,10 +207,55 @@ s_http_response_t *csu_http_response_prepare(s_http_request_t *request, e_http_r
     return response;
 }
 
+static size_t cus_http_response_calculate_response_header_length(s_http_response_t *response)
+{
+    if (NULL == response)
+    {
+        return 0;
+    }
+
+    s_http_header_additional_fields_t *field_head = response->fields;
+    size_t response_length = 5;
+    while (field_head)
+    {
+        response_length += 5 + strlen(field_head->name) + strlen(field_head->value);
+        field_head = field_head->next_field;
+    }
+
+    response_length += 2 + strlen(response->protocol);
+    response_length += 102 + sizeof(response->status_code);
+
+    return response_length;
+}
+
 char *cus_http_response_prepare_str(s_http_response_t *response)
 {
-    if(NULL == response)
+    if (NULL == response)
     {
         return NULL;
     }
+
+    size_t response_len = cus_http_response_calculate_response_header_length(response);
+
+    print_e("Total header length: %ld", response_len);
+    char *response_str = (char *)malloc(response_len);
+    if (NULL == response_str)
+    {
+        return NULL;
+    }
+
+    memset(response_str, 0, response_len);
+    snprintf(response_str, response_len, "%s ", response->protocol);
+    snprintf(response_str + strlen(response_str), response_len, "%d ", response->status_code);
+    char *status_str = cus_http_get_http_code_str(response->status_code);
+    snprintf(response_str + strlen(response_str), response_len, "%s\r\n", status_str);
+
+    s_http_header_additional_fields_t *field_head = response->fields;
+    while (field_head)
+    {
+        snprintf(response_str + strlen(response_str), response_len, "%s: %s\r\n", field_head->name, field_head->value);
+        field_head = field_head->next_field;
+    }
+
+    return response_str;
 }

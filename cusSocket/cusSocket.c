@@ -36,21 +36,20 @@ __unix__ for Unix
         printf("WSAStartup failed: %d\n", WSAGetLastError()); \
         exit(EXIT_FAILURE);                                   \
     }
-#define CLEANUP                                                 \
-    WSACleanup();                                               \
+#define CLEANUP   \
+    WSACleanup(); \
     exit(EXIT_FAILURE)
 #else
 #define STARTUP
-#define CLEANUP                  \
-    TRACE_E("Operation failed"); \
+#define CLEANUP \
     exit(EXIT_FAILURE);
 #endif
 
 #define BUFFER_SIZE 4096
 #define PORT 8080
-#define IP "127.0.0.1"
+#define IP "127.0.0.2"
 
-static void process_http_headers(const char *data, ssize_t data_length);
+static s_http_request_t process_http_headers(const char *data, ssize_t data_length);
 
 int cus_socket_create()
 {
@@ -60,7 +59,6 @@ int cus_socket_create()
     struct sockaddr_in address;
     int addrlen = sizeof(address);
     char buffer[1024] = {0};
-    char *hello = "Hello from server";
     char *ip = IP;
 
     // Creating socket file descriptor
@@ -69,7 +67,7 @@ int cus_socket_create()
         CLEANUP;
     }
 
-    printf("Soccket successfully created with fd %d\n", server_fd);
+    printf("Socket successfully created with fd %d\n", server_fd);
 
     address.sin_family = AF_INET;
     address.sin_port = htons(PORT);
@@ -105,14 +103,19 @@ int cus_socket_create()
     else
     {
         valread = recv(new_socket, buffer, 1024, 0);
-        process_http_headers(buffer, valread);
-        send(new_socket, hello, strlen(hello), 0);
+        s_http_request_t request = process_http_headers(buffer, valread);
+        s_http_response_t *response = csu_http_response_prepare(&request, HTTP_RESPONSE_STATUS_200);
+        char *response_str = cus_http_response_prepare_str(response);
+        send(new_socket, response_str, strlen(response_str), 0);
 
         // closing the connected socket
         close(new_socket);
         // closing the listening socket
-        // shutdown(server_fd, SHUT_RDWR);
+#if defined(_WIN32)
         shutdown(server_fd, SD_BOTH);
+#else
+        shutdown(server_fd, SHUT_RDWR);
+#endif
 
         CLEANUP;
     }
@@ -120,10 +123,11 @@ int cus_socket_create()
 }
 
 // Function to extract and process HTTP headers
-static void process_http_headers(const char *data, ssize_t data_length)
+static s_http_request_t process_http_headers(const char *data, ssize_t data_length)
 {
-    // printf("Buffer incoming: \n%s", data);
+    printf("Buffer incoming: \n%s", data);
     s_http_request_t header_content = parse_http_header(data, data_length);
-    print_http_header(&header_content);
-    csu_http_response_prepare(&header_content, HTTP_RESPONSE_STATUS_200);
+    // print_http_header(&header_content);
+
+    return header_content;
 }
