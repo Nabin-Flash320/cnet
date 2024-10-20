@@ -33,7 +33,7 @@ __unix__ for Unix
     WSADATA wsaData;                                          \
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)            \
     {                                                         \
-        printf("WSAStartup failed: %d\n", WSAGetLastError()); \
+        TRACE_I("WSAStartup failed: %d\n", WSAGetLastError()); \
         exit(EXIT_FAILURE);                                   \
     }
 #define CLEANUP   \
@@ -49,13 +49,15 @@ __unix__ for Unix
 #define PORT 8080
 #define IP "127.0.0.2"
 
+static int server_fd;
+
 static s_http_request_t process_http_headers(const char *data, ssize_t data_length);
 
 int cus_socket_create()
 {
     STARTUP
 
-    int server_fd, new_socket, valread;
+    int new_socket, valread;
     struct sockaddr_in address;
     int addrlen = sizeof(address);
     char buffer[1024] = {0};
@@ -67,16 +69,17 @@ int cus_socket_create()
         CLEANUP;
     }
 
-    printf("Socket successfully created with fd %d\n", server_fd);
+    TRACE_I("Socket successfully created with fd %d", server_fd);
 
     address.sin_family = AF_INET;
     address.sin_port = htons(PORT);
     address.sin_addr.s_addr = inet_addr(ip);
 
     // Forcefully attaching socket to port 8080
-    if (bind(server_fd, (struct sockaddr *)&address,
-             sizeof(address)) < 0)
+    int bind_err = bind(server_fd, (struct sockaddr *)&address, sizeof(address));
+    if (bind_err < 0)
     {
+        TRACE_E("Binding error(code: %d)", bind_err);
         CLEANUP;
     }
     if (listen(server_fd, 3) < 0)
@@ -93,7 +96,7 @@ int cus_socket_create()
         CLEANUP;
     }
 
-    print_i("Server started at: \nhttp://%s:%d", IP, PORT);
+    TRACE_I("Server started at: http://%s:%d", IP, PORT);
 
     if ((new_socket = accept(server_fd, (struct sockaddr *)&address,
                              (socklen_t *)&addrlen)) < 0)
@@ -105,27 +108,34 @@ int cus_socket_create()
         valread = recv(new_socket, buffer, 1024, 0);
         s_http_request_t request = process_http_headers(buffer, valread);
         s_http_response_t *response = csu_http_response_prepare(&request, HTTP_RESPONSE_STATUS_200);
-        char *response_str = cus_http_response_prepare_str(response);
+        const char *response_str = cus_http_response_prepare_str(response);
+        TRACE_B("\n%s", response_str);
         send(new_socket, response_str, strlen(response_str), 0);
 
         // closing the connected socket
         close(new_socket);
         // closing the listening socket
-#if defined(_WIN32)
-        shutdown(server_fd, SD_BOTH);
-#else
-        shutdown(server_fd, SHUT_RDWR);
-#endif
+        cus_socket_close();
 
         CLEANUP;
     }
     return 0;
 }
 
+int cus_socket_close()
+{
+#if defined(_WIN32)
+    shutdown(server_fd, SD_BOTH);
+#else
+    shutdown(server_fd, SHUT_RDWR);
+#endif
+    CLEANUP;
+}
+
 // Function to extract and process HTTP headers
 static s_http_request_t process_http_headers(const char *data, ssize_t data_length)
 {
-    printf("Buffer incoming: \n%s", data);
+    TRACE_I("Buffer incoming: \n%s", data);
     s_http_request_t header_content = parse_http_header(data, data_length);
     // print_http_header(&header_content);
 

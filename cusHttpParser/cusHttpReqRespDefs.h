@@ -37,6 +37,7 @@ typedef struct s_http_response
     char *protocol;
     e_http_response_status_code_t status_code;
     s_http_header_additional_fields_t *fields;
+    uint8_t *data;
 }s_http_response_t;
 
 #endif // __CUS_HTTP_REQ_RESP_DEFS_H__
