@@ -29,12 +29,12 @@ __unix__ for Unix
 #include "trace.h"
 
 #if defined(_WIN32)
-#define STARTUP                                               \
-    WSADATA wsaData;                                          \
-    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)            \
-    {                                                         \
+#define STARTUP                                                \
+    WSADATA wsaData;                                           \
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)             \
+    {                                                          \
         TRACE_I("WSAStartup failed: %d\n", WSAGetLastError()); \
-        exit(EXIT_FAILURE);                                   \
+        exit(EXIT_FAILURE);                                    \
     }
 #define CLEANUP   \
     WSACleanup(); \
@@ -75,6 +75,16 @@ int cus_socket_create()
     address.sin_port = htons(PORT);
     address.sin_addr.s_addr = inet_addr(ip);
 
+    int opt = 1;
+    // Set this opetion to reuse the port immediately after it is freed.
+    // Due to TIME_WAIT feature of TCP stack, this might prevent from binding to the 
+    // port after cleaned and restarted the server.
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
+    {
+        TRACE_E("Failed to set SO_REUSEADDR");
+        CLEANUP;
+    }
+
     // Forcefully attaching socket to port 8080
     int bind_err = bind(server_fd, (struct sockaddr *)&address, sizeof(address));
     if (bind_err < 0)
@@ -98,27 +108,27 @@ int cus_socket_create()
 
     TRACE_I("Server started at: http://%s:%d", IP, PORT);
 
-    if ((new_socket = accept(server_fd, (struct sockaddr *)&address,
-                             (socklen_t *)&addrlen)) < 0)
+    while (1)
     {
-        CLEANUP;
-    }
-    else
-    {
-        valread = recv(new_socket, buffer, 1024, 0);
-        s_http_request_t request = process_http_headers(buffer, valread);
-        s_http_response_t *response = csu_http_response_prepare(&request, HTTP_RESPONSE_STATUS_200);
-        const char *response_str = cus_http_response_prepare_str(response);
-        TRACE_B("\n%s", response_str);
-        send(new_socket, response_str, strlen(response_str), 0);
+        if ((new_socket = accept(server_fd, (struct sockaddr *)&address,
+                                 (socklen_t *)&addrlen)) < 0)
+        {
+            continue;
+        }
+        else
+        {
+            valread = recv(new_socket, buffer, 1024, 0);
+            s_http_request_t request = process_http_headers(buffer, valread);
+            s_http_response_t *response = cus_http_response_prepare(&request, HTTP_RESPONSE_STATUS_200);
+            const char *response_str = cus_http_response_prepare_str(response);
+            TRACE_B("\n%s", response_str);
+            send(new_socket, response_str, strlen(response_str), 0);
 
-        // closing the connected socket
-        close(new_socket);
-        // closing the listening socket
-        cus_socket_close();
-
-        CLEANUP;
+            // closing the connected socket
+            close(new_socket);
+        }
     }
+
     return 0;
 }
 

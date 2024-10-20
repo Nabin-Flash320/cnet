@@ -163,7 +163,7 @@ static char *cus_http_get_http_code_str(e_http_response_status_code_t status_cod
     return ret;
 }
 
-s_http_response_t *csu_http_response_prepare(s_http_request_t *request, e_http_response_status_code_t status_code)
+s_http_response_t *cus_http_response_prepare(s_http_request_t *request, e_http_response_status_code_t status_code)
 {
 
     if (NULL == request)
