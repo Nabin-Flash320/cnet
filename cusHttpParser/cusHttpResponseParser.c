@@ -58,7 +58,6 @@ static int cus_header_fields_populate_to_ll(s_http_response_t *response, char *n
     }
     else
     {
-        print_i("Field exist");
         s_http_header_additional_fields_t *field = response->fields;
         while (field->next_field)
         {
@@ -129,13 +128,13 @@ static void cus_http_print_response(s_http_response_t *response)
 {
     if (NULL != response)
     {
-        print_e("Protocol: %s", response->protocol);
-        print_e("Status: %d", response->status_code);
+        TRACE_E("Protocol: %s", response->protocol);
+        TRACE_E("Status: %d", response->status_code);
         s_http_header_additional_fields_t *field = response->fields;
         while (NULL != field)
         {
-            print_e("Name: %s", field->name);
-            print_e("Value: %s", field->value);
+            TRACE_E("Name: %s", field->name);
+            TRACE_E("Value: %s", field->value);
             field = field->next_field;
         }
     }
@@ -169,17 +168,17 @@ s_http_response_t *csu_http_response_prepare(s_http_request_t *request, e_http_r
 
     if (NULL == request)
     {
-        print_e("Empty request.");
+        TRACE_E("Empty request.");
         return NULL;
     }
     if (NULL == request->protocol)
     {
-        print_e("No protocol provided.");
+        TRACE_E("No protocol provided.");
         return NULL;
     }
     if ((status_code < HTTP_RESPONSE_STATUS_200) || (status_code > HTTP_RESPONSE_STATUS_MAX))
     {
-        print_e("Illegal HTTP response status code provided.");
+        TRACE_E("Illegal HTTP response status code provided.");
         return NULL;
     }
 
@@ -228,7 +227,7 @@ static size_t cus_http_response_calculate_response_header_length(s_http_response
     return response_length;
 }
 
-char *cus_http_response_prepare_str(s_http_response_t *response)
+const char *cus_http_response_prepare_str(s_http_response_t *response)
 {
     if (NULL == response)
     {
@@ -237,7 +236,7 @@ char *cus_http_response_prepare_str(s_http_response_t *response)
 
     size_t response_len = cus_http_response_calculate_response_header_length(response);
 
-    print_e("Total header length: %ld", response_len);
+    TRACE_E("Total header length: %ld", response_len);
     char *response_str = (char *)malloc(response_len);
     if (NULL == response_str)
     {

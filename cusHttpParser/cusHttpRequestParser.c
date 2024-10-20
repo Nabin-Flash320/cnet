@@ -4,7 +4,7 @@
 #include <string.h>
 
 #ifdef _WIN32
-    #define strtok_r strtok_s
+#define strtok_r strtok_s
 #endif
 
 #include <stdint.h>
@@ -12,7 +12,6 @@
 
 #include "trace.h"
 #include "cusHttpRequestParser.h"
-
 
 static e_http_method_t get_http_method(const char *http_method);
 static char *get_http_method_str(e_http_method_t method);
